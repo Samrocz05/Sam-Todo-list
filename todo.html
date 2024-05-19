@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List with Unique Users</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: url('like.png') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: rgba(83, 81, 81, 0.8);
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 300px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        input[type="text"], input[type="tel"] {
+            width: calc(100% - 20px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        button {
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #noteScreen, #adminScreen {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="loginScreen">
+    <h2>Login</h2>
+    <input type="text" id="usernameInput" placeholder="Enter username..." required>
+    <input type="tel" id="mobileInput" placeholder="Enter mobile number..." pattern="[0-9]{10}" required>
+    <button onclick="saveUser()">Continue</button>
+    <button onclick="adminLogin()">Admin</button>
+</div>
+
+<div class="container" id="noteScreen">
+    <h2>To-Do List</h2>
+    <input type="text" id="taskInput" placeholder="Enter task...">
+    <button onclick="addTask()">Add Task</button>
+    <ul id="taskList"></ul>
+    <button onclick="clearTasks()">Clear Tasks</button>
+    <button onclick="logout()">Logout</button>
+</div>
+
+<div class="container" id="adminScreen">
+    <h2>Admin View</h2>
+    <ul id="userList"></ul>
+    <button onclick="adminLogout()">Logout</button>
+</div>
+
+<script>
+    function saveUser() {
+        var username = document.getElementById("usernameInput").value.trim();
+        var mobile = document.getElementById("mobileInput").value.trim();
+        if (username === "" || mobile === "" || !/^\d{10}$/.test(mobile)) {
+            alert("Please enter valid username and 10-digit mobile number!");
+            return;
+        }
+        localStorage.setItem("currentUser", JSON.stringify({username: username, mobile: mobile}));
+        showNoteScreen();
+    }
+
+    // Function to show the note screen
+    function showNoteScreen() {
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("noteScreen").style.display = "block";
+        loadTasks();
+    }
+
+    // Function to load tasks from local storage
+    function loadTasks() {
+        var currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        if (currentUser) {
+            var tasks = JSON.parse(localStorage.getItem(currentUser.mobile + "_tasks")) || [];
+            var ul = document.getElementById("taskList");
+            ul.innerHTML = "";
+            tasks.forEach(function(task) {
+                var li = document.createElement("li");
+                li.appendChild(document.createTextNode(task));
+                ul.appendChild(li);
+            });
+        }
+    }
+
+    // Function to add a task
+    function addTask() {
+        var input = document.getElementById("taskInput").value.trim();
+        if (input === "") {
+            alert("Please enter a task!");
+            return;
+        }
+        var ul = document.getElementById("taskList");
+        var li = document.createElement("li");
+        li.appendChild(document.createTextNode(input));
+        ul.appendChild(li);
+
+        saveTasks();
+        document.getElementById("taskInput").value = "";
+    }
+
+    // Function to save tasks to local storage
+    function saveTasks() {
+        var currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        if (currentUser) {
+            var tasks = [];
+            var listItems = document.querySelectorAll("#taskList li");
+            listItems.forEach(function(item) {
+                tasks.push(item.textContent);
+            });
+            localStorage.setItem(currentUser.mobile + "_tasks", JSON.stringify(tasks));
+        }
+    }
+
+    // Function to clear tasks
+    function clearTasks() {
+        var currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        if (currentUser) {
+            localStorage.removeItem(currentUser.mobile + "_tasks");
+            document.getElementById("taskList").innerHTML = "";
+        }
+    }
+
+    // Function to logout and clear user data
+    function logout() {
+        localStorage.removeItem("currentUser");
+        document.getElementById("noteScreen").style.display = "none";
+        document.getElementById("loginScreen").style.display = "block";
+        document.getElementById("usernameInput").value = "";
+        document.getElementById("mobileInput").value = "";
+        document.getElementById("taskList").innerHTML = "";
+    }
+
+    // Function to show admin screen
+    function adminLogin() {
+        var adminMobile = prompt("Enter admin mobile number:");
+        if (adminMobile === "7449228156") {
+            showAdminScreen();
+        } else {
+            alert("Invalid admin mobile number!");
+        }
+    }
+
+    // Function to show the admin screen
+    function showAdminScreen() {
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("adminScreen").style.display = "block";
+        loadUsers();
+    }
+
+    // Helper function to check if a string is valid JSON
+    function isValidJSON(str) {
+        try {
+            JSON.parse(str);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Function to load user list in admin screen
+    function loadUsers() {
+        var ul = document.getElementById("userList");
+        ul.innerHTML = ""; // Clear existing user list
+        for (var i = 0; i < localStorage.length; i++) {
+            var key = localStorage.key(i);
+            if (key.endsWith("_tasks") || key === "currentUser") continue; // Skip task keys and current user key
+            var item = localStorage.getItem(key);
+            if (isValidJSON(item)) {
+                var user = JSON.parse(item);
+                if (user && user.mobile) {
+                    var li = document.createElement("li");
+                    li.appendChild(document.createTextNode(user.username + " (" + user.mobile + ")"));
+                    ul.appendChild(li);
+                }
+            } else {
+                console.error("Invalid JSON entry found and skipped:", item);
+            }
+        }
+    }
+
+    // Function to logout admin
+    function adminLogout() {
+        document.getElementById("adminScreen").style.display = "none";
+        document.getElementById("loginScreen").style.display = "block";
+    }
+    // Function to load user list in admin screen
+function loadUsers() {
+    var ul = document.getElementById("userList");
+    ul.innerHTML = ""; // Clear existing user list
+    for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key.endsWith("_tasks") || key === "currentUser") continue; // Skip task keys and current user key
+        var item = localStorage.getItem(key);
+        try {
+            var user = JSON.parse(item);
+            if (user && user.mobile) {
+                var li = document.createElement("li");
+                li.appendChild(document.createTextNode(user.username + " (" + user.mobile + ")"));
+                ul.appendChild(li);
+            }
+        } catch (e) {
+            console.error("Invalid JSON entry found and skipped:", item);
+            continue; // Skip invalid JSON entries
+        }
+    }
+}
+
+
+    // Show login screen on page load
+    window.onload = function() {
+        document.getElementById("loginScreen").style.display = "block";
+        document.getElementById("noteScreen").style.display = "none";
+        document.getElementById("adminScreen").style.display = "none";
+        document.getElementById("usernameInput").value = "";
+        document.getElementById("mobileInput").value = "";
+        document.getElementById("taskList").innerHTML = "";
+    }
+</script>
+
+</body>
+</html>
